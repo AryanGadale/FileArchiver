@@ -149,7 +149,3 @@ Huffman coding is an **entropy-based statistical compression algorithm**. Its ef
 ```
 
 ---
-
-## 📄 License
-
-Distributed under the MIT License.
