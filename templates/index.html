@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Archiver & Compressor</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --success: #16a34a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 40px 20px; }
+    .container { width: 100%; max-width: 680px; }
+
+    header { text-align: center; margin-bottom: 28px; }
+    header h1 { font-size: 26px; font-weight: 700; color: var(--text); }
+    header p { color: var(--text-muted); margin-top: 6px; font-size: 14px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); overflow: hidden; }
+
+    .tabs { display: flex; border-bottom: 1px solid var(--border); background: #f1f5f9; }
+    .tab-btn { flex: 1; padding: 14px; border: none; background: none; font-size: 15px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+    .tab-btn.active { background: var(--surface); color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+    .tab-content { padding: 24px; display: none; }
+    .tab-content.active { display: block; }
+
+    .dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 36px 20px; text-align: center; cursor: pointer; transition: 0.2s; background: #fafafa; }
+    .dropzone:hover { border-color: var(--primary); background: #eff6ff; }
+    .dropzone input { display: none; }
+    .dropzone-label { font-size: 15px; color: var(--text); font-weight: 500; }
+    .dropzone-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+
+    .btn { display: inline-block; width: 100%; margin-top: 18px; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: white; font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s; text-align: center; text-decoration: none; }
+    .btn:hover { background: var(--primary-hover); }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+    .stats-card { margin-top: 20px; border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: #f8fafc; display: none; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+    .stat-item { background: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border); }
+    .stat-label { font-size: 12px; color: var(--text-muted); }
+    .stat-val { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 2px; }
+
+    .btn-download { background: var(--success); margin-top: 14px; }
+    .btn-download:hover { background: #15803d; }
+
+    .status-msg { margin-top: 14px; font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>File Archiver & Compressor</h1>
+    <p>Lossless Huffman Coding Engine (Supports PDF, Images, Audio & Text)</p>
+  </header>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('compress')">Compress File</button>
+      <button class="tab-btn" onclick="switchTab('extract')">Extract Archive</button>
+    </div>
+
+    <!-- Tab 1: Compress -->
+    <div id="tab-compress" class="tab-content active">
+      <div class="dropzone" onclick="document.getElementById('compress-input').click()">
+        <input type="file" id="compress-input" onchange="handleFileSelect('compress')">
+        <div class="dropzone-label" id="compress-label">Click or Drag & Drop File Here</div>
+        <div class="dropzone-sub">Supports any binary format (.pdf, .png, .jpg, .docx, .txt)</div>
+      </div>
+
+      <button id="compress-btn" class="btn" onclick="runCompression()" disabled>Compress to .huff</button>
+      <div id="compress-status" class="status-msg"></div>
+
+      <div id="compress-stats" class="stats-card">
+        <h3>Compression Statistics</h3>
+        <div class="stats-grid">
+          <div class="stat-item"><div class="stat-label">Original Size</div><div id="stat-orig" class="stat-val">-</div></div>
+          <div class="stat-item"><div class="stat-label">Archive Size</div><div id="stat-comp" class="stat-val">-</div></div>
+          <div class="stat-item"><div class="stat-label">Compression Ratio</div><div id="stat-ratio" class="stat-val">-</div></div>
+          <div class="stat-item"><div class="stat-label">Space Saved</div><div id="stat-saved" class="stat-val" style="color: var(--success);">-</div></div>
+        </div>
+        <a id="compress-download" class="btn btn-download" href="#" download>Download .huff Archive</a>
+      </div>
+    </div>
+
+    <!-- Tab 2: Extract -->
+    <div id="tab-extract" class="tab-content">
+      <div class="dropzone" onclick="document.getElementById('extract-input').click()">
+        <input type="file" id="extract-input" accept=".huff" onchange="handleFileSelect('extract')">
+        <div class="dropzone-label" id="extract-label">Select .huff Archive</div>
+        <div class="dropzone-sub">Only valid Huffman archives created with HUF2 format</div>
+      </div>
+
+      <button id="extract-btn" class="btn" onclick="runExtraction()" disabled>Extract Archive</button>
+      <div id="extract-status" class="status-msg"></div>
+
+      <div id="extract-stats" class="stats-card">
+        <h3>Extraction Complete</h3>
+        <p style="margin-top: 6px; font-size: 14px; color: var(--text-muted);">Original format and extension restored without data loss.</p>
+        <a id="extract-download" class="btn btn-download" href="#" download>Download Restored File</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(type) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+    if (type === 'compress') {
+      document.querySelectorAll('.tab-btn')[0].classList.add('active');
+      document.getElementById('tab-compress').classList.add('active');
+    } else {
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+      document.getElementById('tab-extract').classList.add('active');
+    }
+  }
+
+  function handleFileSelect(type) {
+    const input = document.getElementById(`${type}-input`);
+    const label = document.getElementById(`${type}-label`);
+    const btn = document.getElementById(`${type}-btn`);
+
+    if (input.files.length > 0) {
+      label.innerText = `Selected: ${input.files[0].name}`;
+      btn.disabled = false;
+    }
+  }
+
+  async function runCompression() {
+    const input = document.getElementById('compress-input');
+    const status = document.getElementById('compress-status');
+    const statsCard = document.getElementById('compress-stats');
+    const btn = document.getElementById('compress-btn');
+
+    if (!input.files.length) return;
+
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+
+    btn.disabled = true;
+    status.style.color = 'var(--text-muted)';
+    status.innerText = 'Compressing file with Huffman C engine...';
+    statsCard.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/compress', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.success) {
+        status.innerText = '';
+        document.getElementById('stat-orig').innerText = data.original_size;
+        document.getElementById('stat-comp').innerText = data.compressed_size;
+        document.getElementById('stat-ratio').innerText = data.ratio;
+        document.getElementById('stat-saved').innerText = data.space_saved;
+
+        const dl = document.getElementById('compress-download');
+        dl.href = data.download_url;
+        dl.setAttribute('download', data.archive_name);
+
+        statsCard.style.display = 'block';
+      } else {
+        status.style.color = '#dc2626';
+        status.innerText = data.error || 'Compression failed.';
+      }
+    } catch (e) {
+      status.style.color = '#dc2626';
+      status.innerText = 'Server communication error.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function runExtraction() {
+    const input = document.getElementById('extract-input');
+    const status = document.getElementById('extract-status');
+    const statsCard = document.getElementById('extract-stats');
+    const btn = document.getElementById('extract-btn');
+
+    if (!input.files.length) return;
+
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+
+    btn.disabled = true;
+    status.style.color = 'var(--text-muted)';
+    status.innerText = 'Decompressing archive and verifying tree...';
+    statsCard.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/extract', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.success) {
+        status.innerText = '';
+        const dl = document.getElementById('extract-download');
+        dl.href = data.download_url;
+        dl.setAttribute('download', data.filename);
+        statsCard.style.display = 'block';
+      } else {
+        status.style.color = '#dc2626';
+        status.innerText = data.error || 'Extraction failed.';
+      }
+    } catch (e) {
+      status.style.color = '#dc2626';
+      status.innerText = 'Server communication error.';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
